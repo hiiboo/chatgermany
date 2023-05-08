@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href=".//css/style.css">
+<title>HiboChat</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@600&display=swap');
+</style>
+</head>
+<body>
+
+
+<!-- 1e80fb14-7ef3-e84f-961d-a189e95b2836:fx -->
+
+
+<!-- コンテンツ表示画面 -->
+
+<div>
+    <div id="output" style="overflow: auto; height: 300px"></div>
+    <div> NAME <input type="text" id="uname"> </div>
+    <div>
+        <textarea id="JAtext" cols="30" rows="10"></textarea>
+        <button id="translate">Translate & Send Message</button>
+        <!-- 言語のセレクト機能を追加 -->
+        <select id="s-language">
+            <option value="JA">Japanese</option>
+            <option value="EN">English</option>
+            <option value="DE">German</option>
+        </select>
+        →
+        <select id="t-language">
+            <option value="JA">Japanese</option>
+            <option value="EN">English</option>
+            <option value="DE">German</option>
+        </select>
+    </div>
+    <div>
+        <textarea id="DEtext" cols="30" rows="10"></textarea>
+    </div>
+</div>
+<!--/ コンテンツ表示画面 -->
+
+
+
+
+
+<!-- JQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<!-- JQuery -->
+
+
+<!--** 以下Firebase **-->
+<script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.21.0/firebase-app.js";
+    import { getDatabase, ref, push, set, onChildAdded, remove, onChildRemoved } 
+    from "https://www.gstatic.com/firebasejs/9.21.0/firebase-database.js";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyCKRKMI2wbQGRbxAWsuiep8F4-2EY5GVwo",
+    authDomain: "hibo-chat-dbcfb.firebaseapp.com",
+    projectId: "hibo-chat-dbcfb",
+    storageBucket: "hibo-chat-dbcfb.appspot.com",
+    messagingSenderId: "627476140809",
+    appId: "1:627476140809:web:22e6a48d5d96872b9639d8"
+  };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app)
+    const dbRef = ref(db,"chat")
+
+    onChildAdded(dbRef,function(data){
+        const msg = data.val ();
+        const key = data.key; //ユニークキー
+        let h = '<p class="' + (msg.name === $("#uname").val()? 'm-msg' : 'o-msg' )+ '">';
+            h += msg.uname;
+            h += '<br>'
+            h += msg.text;
+            h += '<br>'
+            h += '<small>' + msg.time + '</small>' ;
+            h += '<button class = "delete-btn" data-key ="'+ key +'">Delete</button>';
+            h += '</p>'
+            $("#output").append(h);
+            
+            //最下部にスクロールする
+            const output = document.getElementById('output');
+            output.scrollTop = output.scrollHeight;
+    })
+    
+    $(document).on("click",".delete-btn",function(){
+        const key = $(this).data("key");
+        remove(ref(db,"chat/" + key)); //該当するメッセージをfirebaseから削除
+        $(this).parent().remove(); //該当するメッセージをHTML上から削除
+    })
+
+
+
+$("#translate").on("click",function(){
+    const entext = document.getElementById("JAtext").value;
+
+const API_KEY = '1e80fb14-7ef3-e84f-961d-a189e95b2836:fx';
+const API_URL = 'https://api-free.deepl.com/v2/translate';
+
+const sourceLang = document.getElementById('s-language').value; // セレクトボックスからソース言語を取得
+const targetLang = document.getElementById('t-language').value; // セレクトボックスからターゲット言語を取得
+
+const content = encodeURI(`auth_key=${API_KEY}&text=${entext}&source_lang=${sourceLang}&target_lang=${targetLang}`);
+
+const url = `${API_URL}?${content}`;
+
+fetch(url)
+   .then(function(response) {
+      if (response.ok) {
+          return response.json();
+      } else {
+          throw new Error("Could not reach the API: " + response.statusText);
+      }
+    }).then(function(data) {
+      document.getElementById("DEtext").value = data["translations"][0]["text"]; //送信機能
+      const msg = {
+        uname : $("#uname").val(),
+        text : $("#DEtext").val(),
+        time : new Date().toLocaleString() //送信時刻を追加
+        }
+        const newPostRef = push(dbRef); //ユニークキーを生成
+        set(newPostRef,msg);
+    }).catch(function(error) {
+      document.getElementById("DEtext").value = error.message;
+    });
+    });
+
+  </script>
+</body>
+</html>
